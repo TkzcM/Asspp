@@ -14,15 +14,54 @@ extension AppStore {
         case accountNotFound
     }
 
+    /// Anisette server used by the GSA fallback. Falls back to the bundled
+    /// default when the stored value is not a usable URL.
+    var anisetteServerURL: URL {
+        if let url = URL(string: anisetteServerURLString),
+           url.scheme == "https" || url.scheme == "http",
+           url.host != nil
+        {
+            return url
+        }
+        return URL(string: "https://ani.sidestore.io")!
+    }
+
+    /// Apple now rejects the legacy `MZFinance.woa/wa/authenticate` endpoint
+    /// with HTTP 403 for third-party clients, so try it first and fall back to
+    /// the GSA (SRP) flow on any failure.
+    func refreshAccount(
+        email: String,
+        password: String,
+        code: String,
+        cookies: [ApplePackage.Cookie]
+    ) async throws -> ApplePackage.Account {
+        do {
+            return try await ApplePackage.Authenticator.authenticate(
+                email: email,
+                password: password,
+                code: code,
+                cookies: cookies
+            )
+        } catch {
+            logger.warning("legacy authentication failed, falling back to GSA: \(error.localizedDescription)")
+            return try await GSAAuthenticator.authenticate(
+                email: email,
+                password: password,
+                code: code,
+                anisetteServerURL: anisetteServerURL
+            )
+        }
+    }
+
     @MainActor
     func authenticate(email: String, password: String, code: String) async throws -> UserAccount {
         logger.info("starting authentication for user")
         do {
-            let appleAccount = try await ApplePackage.Authenticator.authenticate(
+            let appleAccount = try await refreshAccount(
                 email: email,
                 password: password,
                 code: code,
-                cookies: [],
+                cookies: []
             )
             let userAccount = save(email: email, account: appleAccount)
             logger.info("authentication successful for user")
@@ -42,11 +81,11 @@ extension AppStore {
             throw AuthenticationError.accountNotFound
         }
         do {
-            let newAppleAccount = try await ApplePackage.Authenticator.authenticate(
+            let newAppleAccount = try await refreshAccount(
                 email: account.account.email,
                 password: account.account.password,
                 code: "",
-                cookies: account.account.cookie,
+                cookies: account.account.cookie
             )
             let updatedAccount = save(email: account.account.email, account: newAppleAccount)
             logger.info("account rotation successful for user id: \(id)")

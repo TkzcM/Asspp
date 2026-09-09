@@ -109,7 +109,17 @@ struct ProductView: View {
     private func acquireLicense() async throws {
         guard let account else { return }
         try await vm.withAccount(id: account.id) { userAccount in
-            try await ApplePackage.Authenticator.rotatePasswordToken(for: &userAccount.account)
+            // Refresh the password token when possible, but fall back to the
+            // stored token if Apple asks for a verification code (the freshly
+            // signed-in token is usually still valid).
+            if let refreshed = try? await AppStore.this.refreshAccount(
+                email: userAccount.account.email,
+                password: userAccount.account.password,
+                code: "",
+                cookies: userAccount.account.cookie
+            ) {
+                userAccount.account = refreshed
+            }
             try await ApplePackage.Purchase.purchase(
                 account: &userAccount.account,
                 app: archive.package.software,
