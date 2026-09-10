@@ -124,20 +124,6 @@ struct SettingView: View {
             }
 
             Section {
-                TextField("https://ani.sidestore.io", text: $vm.anisetteServerURLString)
-                    .font(.system(.body, design: .monospaced))
-                    .autocorrectionDisabled()
-                #if canImport(UIKit)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.URL)
-                #endif
-            } header: {
-                Text("Anisette Server")
-            } footer: {
-                Text("Used for Apple ID authentication on non-jailbroken iOS. If login fails, switch to another compatible anisette-v3-server.")
-            }
-
-            Section {
                 Link("@Lakr233", destination: URL(string: "https://twitter.com/Lakr233")!)
                 Link("Buy me a coffee! ☕️", destination: URL(string: "https://github.com/sponsors/Lakr233/")!)
             } header: {

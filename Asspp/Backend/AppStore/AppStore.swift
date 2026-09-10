@@ -65,26 +65,6 @@ class AppStore {
         }
     }
 
-    @ObservationIgnored
-    private var _anisetteServerURLString = Persist<String>(
-        key: "AnisetteServerURL",
-        defaultValue: "https://ani.sidestore.io"
-    )
-
-    /// Remote anisette-v3-server used by the GSA sign-in fallback. Non-jailbroken
-    /// iOS cannot mint anisette headers locally, so login depends on this server.
-    var anisetteServerURLString: String {
-        get {
-            access(keyPath: \.anisetteServerURLString)
-            return _anisetteServerURLString.wrappedValue
-        }
-        set {
-            withMutation(keyPath: \.anisetteServerURLString) {
-                _anisetteServerURLString.wrappedValue = newValue
-            }
-        }
-    }
-
     static let this = AppStore()
 
     private init() {
